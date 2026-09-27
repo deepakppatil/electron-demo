@@ -1,177 +1,265 @@
-import { useState } from 'react'
 import {
-  LayoutDashboard,
-  Activity,
-  Boxes,
-  Users,
-  CreditCard,
-  Settings,
-  ChevronsUpDown,
+  PanelRightClose,
   Plus,
-  Zap,
-  Command,
-  CircleHelp,
+  LayoutGrid,
+  Activity,
+  Tag,
+  ListChecks,
+  SlidersHorizontal,
+  Folder,
+  Sparkles,
+  UserRound,
+  Moon,
+  Sun,
+  ChevronRight,
+  MoreHorizontal,
+  type LucideIcon,
 } from 'lucide-react'
+import { NAV, PROJECTS } from '@/lib/data'
 import { cx } from '@/lib/format'
 
-const PRIMARY = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard, badge: null },
-  { id: 'activity', label: 'Activity', icon: Activity, badge: '12' },
-  { id: 'projects', label: 'Projects', icon: Boxes, badge: '8' },
-  { id: 'team', label: 'Team', icon: Users, badge: null },
-]
+const NAV_ICONS: Record<string, LucideIcon> = {
+  grid: LayoutGrid,
+  pulse: Activity,
+  tag: Tag,
+  list: ListChecks,
+  sliders: SlidersHorizontal,
+}
 
-const SECONDARY = [
-  { id: 'billing', label: 'Billing', icon: CreditCard },
-  { id: 'settings', label: 'Settings', icon: Settings },
-]
-
-export default function Sidebar() {
-  const [active, setActive] = useState('overview')
-
+export default function Sidebar({
+  active,
+  project,
+  collapsed,
+  onSelectNav,
+  onSelectProject,
+  onNewProject,
+  onToggleCollapse,
+  theme,
+  onToggleTheme,
+  macInset,
+}: {
+  active: string
+  project: string
+  collapsed: boolean
+  onSelectNav: (id: string) => void
+  onSelectProject: (id: string) => void
+  onNewProject: () => void
+  onToggleCollapse: () => void
+  theme: 'dark' | 'light'
+  onToggleTheme: () => void
+  macInset: boolean
+}) {
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
-      {/* Workspace switcher */}
-      <div className="p-3">
-        <button className="group flex w-full items-center gap-2.5 rounded-xl border border-line bg-elevated/70 p-2 text-left transition hover:border-line-strong hover:bg-elevated">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-accent to-cyan text-[11px] font-bold text-white">
-            A
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-medium text-ink">Acme Inc.</span>
-            <span className="block text-[11px] text-ink-faint">Enterprise plan</span>
-          </span>
-          <ChevronsUpDown size={14} className="shrink-0 text-ink-faint transition group-hover:text-ink-muted" />
+    <aside
+      className={cx(
+        'flex shrink-0 flex-col border-r border-line bg-surface transition-[width] duration-200 ease-out',
+        collapsed ? 'w-[68px]' : 'w-[280px]',
+      )}
+    >
+      {/* Brand */}
+      <div
+        className={cx('flex h-11 shrink-0 items-center', collapsed ? 'justify-center px-2' : 'px-4')}
+        style={!collapsed && macInset ? { paddingLeft: 84 } : undefined}
+      >
+        <span className={cx('text-[15px] font-bold tracking-tight text-ink', collapsed && 'sr-only')}>
+          Harness
+        </span>
+        {!collapsed && (
+          <button
+            onClick={onToggleCollapse}
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+            className="ml-auto grid size-7 place-items-center rounded-md text-ink-faint transition hover:bg-raised hover:text-ink"
+          >
+            <PanelRightClose size={15} />
+          </button>
+        )}
+      </div>
+
+      {/* New project */}
+      <div className={cx('px-3 pb-1', collapsed && 'px-2')}>
+        <button
+          onClick={onNewProject}
+          title="New project"
+          className={cx(
+            'flex h-9 w-full items-center gap-2.5 rounded-[var(--radius-tile)] px-2.5 text-[13px] font-semibold text-ink transition hover:bg-raised active:scale-[0.99]',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Plus size={16} strokeWidth={2.6} className="shrink-0 text-accent" />
+          {!collapsed && <span>New Project</span>}
         </button>
       </div>
 
-      <nav className="scroll-thin flex-1 overflow-y-auto px-3 pb-3">
-        <SectionLabel>Monitor</SectionLabel>
+      <nav className="scroll-thin flex-1 overflow-y-auto px-3 py-1">
         <ul className="space-y-0.5">
-          {PRIMARY.map((item) => (
-            <NavItem
-              key={item.id}
-              {...item}
-              active={active === item.id}
-              onSelect={() => setActive(item.id)}
-            />
-          ))}
+          {NAV.map((item) => {
+            const Icon = NAV_ICONS[item.icon]
+            const isActive = active === item.id
+            return (
+              <li key={item.id}>
+                <button
+                  onClick={() => onSelectNav(item.id)}
+                  title={item.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cx(
+                    'flex h-9 w-full items-center gap-3 rounded-[var(--radius-tile)] px-2.5 text-[13px] transition-colors',
+                    collapsed && 'justify-center px-0',
+                    isActive
+                      ? 'bg-raised font-semibold text-ink'
+                      : 'font-medium text-ink-muted hover:bg-elevated hover:text-ink',
+                  )}
+                >
+                  <Icon
+                    size={16}
+                    strokeWidth={2}
+                    className={cx('shrink-0', isActive ? 'text-ink' : 'text-ink-faint')}
+                  />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              </li>
+            )
+          })}
         </ul>
 
-        <SectionLabel className="mt-6">Account</SectionLabel>
+        {/* Projects */}
+        <SectionLabel collapsed={collapsed}>Projects</SectionLabel>
         <ul className="space-y-0.5">
-          {SECONDARY.map((item) => (
-            <NavItem
-              key={item.id}
-              {...item}
-              badge={null}
-              active={active === item.id}
-              onSelect={() => setActive(item.id)}
-            />
-          ))}
+          {PROJECTS.map((p) => {
+            const isActive = project === p.id
+            return (
+              <li key={p.id}>
+                <button
+                  onClick={() => onSelectProject(p.id)}
+                  title={`${p.name} — ${p.openTasks} open`}
+                  className={cx(
+                    'flex h-9 w-full items-center gap-3 rounded-[var(--radius-tile)] px-2.5 text-[13px] transition-colors',
+                    collapsed && 'justify-center px-0',
+                    isActive
+                      ? 'bg-raised font-semibold text-ink'
+                      : 'font-medium text-ink-muted hover:bg-elevated hover:text-ink',
+                  )}
+                >
+                  <Folder
+                    size={16}
+                    strokeWidth={2}
+                    className={cx('shrink-0', isActive ? 'text-accent' : 'text-ink-faint')}
+                  />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 truncate text-left">{p.name}</span>
+                      <span className="tnum text-[11.5px] font-semibold text-ink-faint">
+                        {p.openTasks}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+
+        {/* Agent */}
+        <SectionLabel collapsed={collapsed}>Agent</SectionLabel>
+        <ul className="space-y-0.5">
+          <AgentRow icon={Sparkles} label="Claude Code" collapsed={collapsed} chevron />
+          <AgentRow
+            icon={UserRound}
+            label="Architect"
+            badge="Persona"
+            collapsed={collapsed}
+          />
+          <li>
+            <button
+              onClick={onToggleTheme}
+              title={theme === 'dark' ? 'Dark theme — switch to light' : 'Light theme — switch to dark'}
+              className={cx(
+                'flex h-9 w-full items-center gap-3 rounded-[var(--radius-tile)] px-2.5 text-[13px] font-medium text-ink-muted transition-colors hover:bg-elevated hover:text-ink',
+                collapsed && 'justify-center px-0',
+              )}
+            >
+              {theme === 'dark' ? (
+                <Moon size={16} strokeWidth={2} className="shrink-0 text-ink-faint" />
+              ) : (
+                <Sun size={16} strokeWidth={2} className="shrink-0 text-ink-faint" />
+              )}
+              {!collapsed && <span className="truncate">{theme === 'dark' ? 'Dark theme' : 'Light theme'}</span>}
+            </button>
+          </li>
         </ul>
       </nav>
 
-      {/* Usage meter */}
-      <div className="px-3 pb-3">
-        <div className="rounded-xl border border-line bg-elevated/60 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
-              <Zap size={12} className="text-accent" />
-              Build minutes
-            </span>
-            <span className="tnum text-[11px] text-ink-faint">62%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-canvas">
-            <div className="h-full w-[62%] rounded-full bg-gradient-to-r from-accent to-cyan" />
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
-            3,120 of 5,000 min used · resets in 12 days
-          </p>
-          <button className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-raised py-1.5 text-[12px] font-medium text-ink-muted transition hover:border-accent/50 hover:text-ink">
-            <Plus size={12} /> Upgrade plan
-          </button>
-        </div>
-      </div>
-
-      {/* User */}
-      <div className="flex items-center gap-2.5 border-t border-line p-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-fuchsia-500 to-accent text-[11px] font-bold text-white">
-          DK
+      {/* Account */}
+      <div
+        className={cx(
+          'flex shrink-0 items-center gap-2.5 border-t border-line p-3',
+          collapsed && 'justify-center px-2',
+        )}
+      >
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-purple text-[11px] font-bold text-white">
+          DP
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[12.5px] font-medium text-ink">Devon K.</p>
-          <p className="truncate text-[11px] text-ink-faint">devon@acme.io</p>
-        </div>
-        <button
-          aria-label="Keyboard shortcuts"
-          className="grid size-7 place-items-center rounded-lg text-ink-faint transition hover:bg-raised hover:text-ink-muted"
-        >
-          <Command size={14} />
-        </button>
-        <button
-          aria-label="Help"
-          className="grid size-7 place-items-center rounded-lg text-ink-faint transition hover:bg-raised hover:text-ink-muted"
-        >
-          <CircleHelp size={14} />
-        </button>
+        {!collapsed && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12.5px] font-semibold text-ink">Foo Bar</p>
+              <p className="truncate text-[11px] text-ink-faint">foobar@foo.com</p>
+            </div>
+            <button
+              aria-label="Account menu"
+              className="grid size-7 shrink-0 place-items-center rounded-md text-ink-faint transition hover:bg-raised hover:text-ink"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </>
+        )}
       </div>
     </aside>
   )
 }
 
-function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
+function SectionLabel({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
+  if (collapsed) return <div className="my-3 h-px bg-line" />
   return (
-    <p
-      className={cx(
-        'px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-faint/70',
-        className,
-      )}
-    >
+    <p className="px-2.5 pb-1.5 pt-5 text-[10px] font-bold uppercase tracking-[0.09em] text-ink-faint/80">
       {children}
     </p>
   )
 }
 
-function NavItem({
-  label,
+function AgentRow({
   icon: Icon,
+  label,
   badge,
-  active,
-  onSelect,
+  collapsed,
+  chevron,
 }: {
-  id: string
+  icon: LucideIcon
   label: string
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
-  badge: string | null
-  active: boolean
-  onSelect: () => void
+  badge?: string
+  collapsed: boolean
+  chevron?: boolean
 }) {
   return (
     <li>
       <button
-        onClick={onSelect}
-        aria-current={active ? 'page' : undefined}
+        title={label}
         className={cx(
-          'group relative flex w-full items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] transition-colors',
-          active
-            ? 'bg-raised font-medium text-ink'
-            : 'text-ink-muted hover:bg-elevated hover:text-ink',
+          'flex h-9 w-full items-center gap-3 rounded-[var(--radius-tile)] px-2.5 text-[13px] font-medium text-ink-muted transition-colors hover:bg-elevated hover:text-ink',
+          collapsed && 'justify-center px-0',
         )}
       >
-        {active && (
-          <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-accent" />
-        )}
-        <Icon
-          size={15}
-          strokeWidth={1.9}
-          className={cx('shrink-0', active ? 'text-accent-hi' : 'text-ink-faint group-hover:text-ink-muted')}
-        />
-        <span className="flex-1 text-left">{label}</span>
-        {badge && (
-          <span className="tnum rounded-md bg-raised px-1.5 py-px text-[10.5px] font-medium text-ink-faint group-hover:text-ink-muted">
-            {badge}
-          </span>
+        <Icon size={16} strokeWidth={2} className="shrink-0 text-ink-faint" />
+        {!collapsed && (
+          <>
+            <span className="flex-1 truncate text-left">{label}</span>
+            {badge && (
+              <span className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                {badge}
+              </span>
+            )}
+            {chevron && <ChevronRight size={14} className="shrink-0 text-ink-faint" />}
+          </>
         )}
       </button>
     </li>

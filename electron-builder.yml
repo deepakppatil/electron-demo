@@ -1,5 +1,5 @@
-appId: com.prototype.atlas
-productName: Atlas
+appId: dev.harness.desktop
+productName: Harness
 copyright: Copyright © 2026
 
 directories:
@@ -54,7 +54,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Atlas
+  shortcutName: Harness
 
 linux:
   target: [AppImage]

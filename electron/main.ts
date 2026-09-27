@@ -10,12 +10,12 @@ const isMac = process.platform === 'darwin'
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 880,
-    minWidth: 960,
-    minHeight: 620,
+    width: 1440,
+    height: 900,
+    minWidth: 1120,
+    minHeight: 680,
     show: false,
-    backgroundColor: '#08090d',
+    backgroundColor: '#15111a',
     // macOS keeps the native traffic lights (hiddenInset); Windows/Linux get a
     // fully custom titlebar that we draw in React.
     ...(isMac
@@ -98,5 +98,5 @@ ipcMain.on('win:close', () => mainWindow?.close())
 ipcMain.handle('win:is-maximized', () => mainWindow?.isMaximized() ?? false)
 ipcMain.on('theme:set', (_e, theme: 'dark' | 'light') => {
   nativeTheme.themeSource = theme
-  mainWindow?.setBackgroundColor(theme === 'light' ? '#f3f5f9' : '#08090d')
+  mainWindow?.setBackgroundColor(theme === 'light' ? '#f4f1f5' : '#15111a')
 })

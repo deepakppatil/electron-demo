@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 export type Theme = 'dark' | 'light'
 
-const KEY = 'atlas.theme'
+const KEY = 'harness.theme'
 
 function read(): Theme {
   if (typeof window === 'undefined') return 'dark'

@@ -189,7 +189,7 @@ export default function CommandPalette({
           <span className="flex items-center gap-1">
             <CornerDownLeft size={10} /> open
           </span>
-          <span className="ml-auto font-mono">atlas · ⌘K</span>
+          <span className="ml-auto font-mono">harness · ⌘K</span>
         </footer>
       </div>
     </div>,
