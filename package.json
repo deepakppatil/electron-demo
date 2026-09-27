@@ -2,11 +2,14 @@
   "name": "electron-demo",
   "private": true,
   "version": "0.1.0",
-  "description": "Rapid desktop app prototype — Electron + React + Tailwind CSS",
+  "description": "Harness — Electron + React + Tailwind desktop prototype",
   "author": {
     "name": "electron-demo"
   },
   "main": "dist-electron/main.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "concurrently -k -n VITE,ELECTRON -c magenta,cyan \"npm:dev:renderer\" \"npm:dev:electron\"",
     "dev:renderer": "vite",
@@ -15,10 +18,13 @@
     "build": "npm run build:electron && vite build",
     "build:electron": "node scripts/build-electron.mjs",
     "typecheck": "tsc --noEmit",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win --x64",
-    "dist:mac": "npm run build && electron-builder --mac --x64 --arm64",
-    "dist:all": "npm run build && electron-builder --win --x64 --mac --x64 --arm64"
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('dist-electron',{recursive:true,force:true});console.log('removed dist/ and dist-electron/')\"",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --x64 --arm64 --publish never",
+    "dist:linux": "npm run build && electron-builder --linux AppImage --publish never",
+    "dist:all": "npm run dist:win && npm run dist:mac",
+    "icon": "bash scripts/make-icon.sh"
   },
   "dependencies": {
     "lucide-react": "^0.548.0",
@@ -31,7 +37,7 @@
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.1.0",
     "concurrently": "^9.2.1",
-    "cross-env": "^10.1.0",
+    "cross-env": "^10.0.0",
     "electron": "^44.0.0",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.25.10",

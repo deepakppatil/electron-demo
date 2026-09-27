@@ -1,0 +1,292 @@
+# ==============================================================================
+# Harness — GitLab CI
+# ==============================================================================
+# Pipeline shape
+#   check    → typecheck + production build on every branch and MR
+#              (fast: no Electron binary, no packaging toolchain)
+#   package  → one job per target OS, each building on a *native* runner
+#   release  → tag pushes assemble a GitLab release from the packaged artifacts
+#
+# Runner requirements
+#   check, package:linux  → any Linux docker runner  (image: node:22-bookworm)
+#   package:windows        → a Windows runner, tag `windows`
+#   package:macos          → a macOS runner,   tag `macos`
+#
+# Sharing is done with `extends` + hidden jobs, deliberately not YAML anchors:
+# an anchored block scalar resolves inconsistently across YAML parsers, and
+# GitLab replaces (rather than appends) arrays on `extends` anyway, so every
+# job that needs a different step list declares it in full.
+#
+# Builds are unsigned by default. To sign, set the CI/CD variables listed under
+# "Code signing" in the README — no edit to this file is required.
+# ==============================================================================
+
+stages:
+  - check
+  - package
+  - release
+
+variables:
+  NODE_VERSION: "22.22.3"
+
+  # Keep every download inside the project so `cache:` can restore it.
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  npm_config_audit: "false"
+  npm_config_fund: "false"
+  ELECTRON_CACHE: "$CI_PROJECT_DIR/.cache/electron"
+  ELECTRON_BUILDER_CACHE: "$CI_PROJECT_DIR/.cache/electron-builder"
+
+  # electron-builder must not go hunting for a certificate we do not have;
+  # without this it fails with a confusing "cannot find valid certificate".
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+  # Reproducible archives.
+  LC_ALL: C.UTF-8
+  LANG: C.UTF-8
+  TZ: UTC
+
+default:
+  interruptible: true
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - .cache/electron/
+      - .cache/electron-builder/
+    policy: pull-push
+
+# ------------------------------------------------------------------------------
+# Hidden templates
+# ------------------------------------------------------------------------------
+
+# `npm ci`, never `npm install`, so CI installs exactly the committed lockfile.
+.linux_node:
+  image: node:22-bookworm
+  before_script:
+    - |
+      set -e
+      echo "node $(node --version) / npm $(npm --version)"
+      npm ci
+
+# macOS GitLab.com runners already ship Node; self-hosted ones may not.
+# Install the pinned version only when it is genuinely absent, and verify the
+# tarball against the official SHASUMS256.txt.
+.macos_node:
+  tags:
+    - macos
+  before_script:
+    - |
+      set -e
+      if ! command -v node >/dev/null 2>&1; then
+        echo "Node.js $NODE_VERSION not found on this runner — installing."
+        case "$(uname -m)" in
+          arm64|aarch64) TARBALL_ARCH="arm64" ;;
+          *)             TARBALL_ARCH="x64" ;;
+        esac
+        TARBALL="node-v${NODE_VERSION}-darwin-${TARBALL_ARCH}.tar.gz"
+        curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${TARBALL}"
+        curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
+          | grep " ${TARBALL}\$" \
+          | sed "s|^|$TARBALL |" \
+          | shasum -a 256 -c -
+        tar -xzf "$TARBALL"
+        BIN="$CI_PROJECT_DIR/node-v${NODE_VERSION}-darwin-${TARBALL_ARCH}/bin"
+        echo "$BIN" >> "$GITHUB_PATH"
+        export PATH="$BIN:$PATH"
+      fi
+      node --version
+    - |
+      set -e
+      echo "node $(node --version) / npm $(npm --version)"
+      npm ci
+
+# Same for Windows (PowerShell). $GITHUB_PATH persists PATH across steps.
+.windows_node:
+  tags:
+    - windows
+  before_script:
+    - |
+      if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Host "Node.js $env:NODE_VERSION not found on this runner - installing."
+        $zip = "node-v$env:NODE_VERSION-win-x64.zip"
+        Invoke-WebRequest "https://nodejs.org/dist/v$env:NODE_VERSION/$zip" -OutFile $zip
+        Expand-Archive $zip -DestinationPath $env:USERPROFILE -Force
+        $bin = "$env:USERPROFILE\node-v$env:NODE_VERSION-win-x64"
+        Add-Content -Path $env:GITHUB_PATH -Value $bin
+        Add-Content -Path $env:GITHUB_ENV  -Value "PATH=$bin;$env:PATH"
+      }
+      node --version
+    - |
+      $ErrorActionPreference = "Stop"
+      Write-Host "node $(node --version) / npm $(npm --version)"
+      npm ci
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Packaging templates: install, build, assert entry points, then package.
+# These live in the templates so the electron-builder call stays in `script`
+# (a failure in `after_script` would NOT fail the job).
+.package_linux:
+  extends: .linux_node
+  stage: package
+  before_script:
+    - |
+      set -e
+      echo "node $(node --version) / npm $(npm --version)"
+      npm ci
+    # libfuse2 lets the AppImage tooling mount/inspect the image it just built.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends libfuse2
+  script:
+    - |
+      set -e
+      npm run build
+      test -f dist/index.html
+      test -f dist-electron/main.js
+      test -f dist-electron/preload.js
+    - npx electron-builder --linux AppImage --publish never
+
+.package_windows:
+  extends: .windows_node
+  stage: package
+  script:
+    - |
+      $ErrorActionPreference = "Stop"
+      npm run build
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      foreach ($f in @("dist/index.html", "dist-electron/main.js", "dist-electron/preload.js")) {
+        if (-not (Test-Path $f)) { throw "missing build output: $f" }
+      }
+    # NSIS installer + portable exe, x64. electron-builder fetches its own
+    # NSIS toolchain on first run and caches it under ELECTRON_BUILDER_CACHE.
+    - npx electron-builder --win --x64 --publish never
+    - if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+.package_macos:
+  extends: .macos_node
+  stage: package
+  script:
+    - |
+      set -e
+      npm run build
+      test -f dist/index.html
+      test -f dist-electron/main.js
+      test -f dist-electron/preload.js
+    # Must run on macOS: the .app bundle and the .dmg wrapper cannot be
+    # produced on Linux. Ununsigned unless signing variables are present —
+    # see README "Code signing".
+    - npx electron-builder --mac --x64 --arm64 --publish never
+
+# ------------------------------------------------------------------------------
+# check — runs everywhere, catches breakage in seconds
+# ------------------------------------------------------------------------------
+
+typecheck:
+  extends: .linux_node
+  stage: check
+  script:
+    - npm run typecheck
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+build:
+  extends: .linux_node
+  stage: check
+  script:
+    - |
+      set -e
+      npm run build
+      test -f dist/index.html
+      test -f dist-electron/main.js
+      test -f dist-electron/preload.js
+  artifacts:
+    name: "build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - dist/
+      - dist-electron/
+    expire_in: 1 day
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ------------------------------------------------------------------------------
+# package — one native runner per target OS
+# ------------------------------------------------------------------------------
+
+package:linux:
+  extends: .package_linux
+  artifacts:
+    name: "harness-linux-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - release/*.AppImage
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+package:windows:
+  extends: .package_windows
+  artifacts:
+    name: "harness-windows-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - release/*.exe
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+package:macos:
+  extends: .package_macos
+  artifacts:
+    name: "harness-macos-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - release/*.dmg
+      - release/*.zip
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ------------------------------------------------------------------------------
+# release — tag pushes only
+# ------------------------------------------------------------------------------
+
+release:
+  stage: release
+  image: alpine:latest
+  needs:
+    - job: package:linux
+      artifacts: true
+    - job: package:windows
+      artifacts: true
+    - job: package:macos
+      artifacts: true
+  script:
+    - |
+      set -e
+      mkdir -p dist-assets
+      # Globs rather than `find`: portable across busybox and GNU, and the
+      # artifacts are already scoped to release/*.{exe,dmg,zip,AppImage}.
+      count=0
+      for f in release/*.exe release/*.dmg release/*.zip release/*.AppImage; do
+        [ -e "$f" ] || continue
+        cp "$f" dist-assets/
+        count=$((count + 1))
+      done
+      echo "collected $count artifact(s)"
+      [ "$count" -gt 0 ] || { echo "ERROR: no artifacts were produced"; exit 1; }
+      ls -lh dist-assets/
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    name: "Harness $CI_COMMIT_TAG"
+    description: "Harness desktop prototype — build $CI_COMMIT_SHORT_SHA from `$CI_COMMIT_REF_NAME`."
+  artifacts:
+    name: "harness-release-$CI_COMMIT_TAG"
+    paths:
+      - dist-assets/
+    expire_in: never
+  rules:
+    - if: $CI_COMMIT_TAG
