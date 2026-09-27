@@ -71,8 +71,12 @@ exposed by the preload. External links are intercepted and opened in the system 
 over our custom bar (we reserve 88px). Windows and Linux use `frame: false` and draw their own
 minimize / maximize / close buttons. The renderer branches on `window.desktop.platform`.
 
-**Theming.** Every colour, radius, and font is a CSS variable in the `@theme` block at the top of
-`src/index.css`. Change a token there and the whole app re-skins — no component edits needed.
+**Theming.** Every colour, radius, and font is a CSS variable in the two `:root` blocks at the top
+of `src/index.css` (dark + light). An `@theme inline` layer maps them onto Tailwind utilities
+(`bg-surface`, `text-ink`, `border-line`, …), so opacity modifiers keep working and the whole app
+re-skins the instant a variable changes — no component edits. The header has a light/dark toggle to
+prove it, and the choice persists in `localStorage`. The Electron main process mirrors the theme to
+`nativeTheme` and the window background colour so the frame never flashes the wrong shade.
 
 **Fonts.** System font stacks (SF Pro on macOS, Segoe UI on Windows) so the app looks native on both
 and ships with zero font payload.
@@ -84,12 +88,30 @@ The main pane is a sticky-header + scrollable-body layout, so the page header st
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl/⌘ + K` | Focus the search field |
-| `Esc` | Blur search |
+| `Ctrl/⌘ + K` | Open / close the command palette |
+| `↑` `↓` | Move through palette results |
+| `Enter` | Open the highlighted result |
+| `Esc` | Dismiss the palette |
 
-## Prototype shortcuts
+## Prototype details
 
-The screen is deliberately interactive so the design can be evaluated as a real app rather than a
-static mock: the traffic chart has a crosshair + tooltip and a working 7/30/90-day range switch,
-sidebar navigation and the Live/Paused toggle change state, the clock ticks, and the deploy table
-highlights on hover.
+The screen is deliberately interactive so the design can be judged as a real app rather than a
+static mock:
+
+- **Command palette** (`⌘K`) — fuzzy subsequence search over pages, the deployed services, and
+  actions, with grouped results and full keyboard navigation.
+- **Traffic chart** — crosshair + tooltip, and a working 7/30/90-day range switch backed by a
+  deterministic seeded generator, so the numbers never jitter between renders.
+- **Theme toggle** — swaps the entire token set, and syncs the native window chrome.
+- Live/pause toggle, a ticking clock, a KPI that nudges upward while live, toasts on actions,
+  hover states throughout, and a dark theme that is the product default.
+
+## Where the real Electron bits live
+
+| Concern | File |
+| --- | --- |
+| Window creation, lifecycle, single-instance lock | `electron/main.ts` |
+| The only renderer↔OS bridge (`contextBridge`) | `electron/preload.ts` |
+| Window controls IPC (`minimize` / `toggleMaximize` / `close`) | `electron/main.ts` + `TitleBar.tsx` |
+| Platform-aware titlebar (mac traffic lights vs. custom) | `electron/main.ts` + `TitleBar.tsx` |
+| Theme → native chrome sync | `electron/main.ts` (`theme:set`) |

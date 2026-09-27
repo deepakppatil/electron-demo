@@ -1,42 +1,103 @@
 @import 'tailwindcss';
 
-/* ------------------------------------------------------------------ *
- * Design tokens — the single place to re-theme the whole prototype.
- * Changing a value here re-skins every screen.
- * ------------------------------------------------------------------ */
-@theme {
+/* ================================================================== *
+ * DESIGN TOKENS
+ * ------------------------------------------------------------------
+ * Every colour / radius / font in the app resolves through this layer.
+ * To re-skin to any reference design, edit the two `:root` blocks below
+ * and nothing else.  The `@theme inline` block maps them onto Tailwind
+ * utilities (`bg-surface`, `text-ink`, `border-line`, …).
+ * ================================================================== */
+
+/* --- Dark (default) ------------------------------------------------ */
+:root {
+  --app-canvas: #08090d;
+  --app-surface: #0d0f15;
+  --app-elevated: #12151d;
+  --app-raised: #171b25;
+  --app-line: #1b1f29;
+  --app-line-strong: #262c3a;
+  --app-ink: #edeff5;
+  --app-ink-muted: #98a0b5;
+  --app-ink-faint: #5f6779;
+
+  --app-accent: #7c5cff;
+  --app-accent-hi: #9b82ff;
+  --app-cyan: #22d3ee;
+  --app-mint: #34d399;
+  --app-amber: #fbbf24;
+  --app-rose: #fb7185;
+
+  /* Perceived elevation — a hairline highlight plus a cast shadow. */
+  --app-bevel:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 12px 32px -18px rgb(0 0 0 / 0.9);
+
+  /* Ambient light behind the content. */
+  --app-aurora-a: rgb(124 92 255 / 0.16);
+  --app-aurora-b: rgb(34 211 238 / 0.1);
+  --app-grid: rgb(255 255 255 / 0.028);
+  --app-grain: 0.045;
+}
+
+/* --- Light --------------------------------------------------------- */
+:root[data-theme='light'] {
+  --app-canvas: #f3f5f9;
+  --app-surface: #ffffff;
+  --app-elevated: #ffffff;
+  --app-raised: #eef1f6;
+  --app-line: #e3e7ef;
+  --app-line-strong: #cfd5e1;
+  --app-ink: #0d1117;
+  --app-ink-muted: #5b6474;
+  --app-ink-faint: #8a93a6;
+
+  --app-accent: #6d4aff;
+  --app-accent-hi: #5836e8;
+  --app-cyan: #0891b2;
+  --app-mint: #059669;
+  --app-amber: #b45309;
+  --app-rose: #e11d48;
+
+  --app-bevel:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px 0 rgb(16 24 40 / 0.05),
+    0 12px 28px -20px rgb(16 24 40 / 0.3);
+
+  --app-aurora-a: rgb(124 92 255 / 0.14);
+  --app-aurora-b: rgb(34 211 238 / 0.12);
+  --app-grid: rgb(13 17 23 / 0.035);
+  --app-grain: 0.025;
+}
+
+/* `inline` makes Tailwind emit var() directly, so utilities keep working
+   with opacity modifiers (bg-surface/60) and live-update on theme change. */
+@theme inline {
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter,
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
     'Liberation Mono', monospace;
 
-  /* Surfaces, darkest → lightest */
-  --color-canvas: #08090d;
-  --color-surface: #0d0f15;
-  --color-elevated: #12151d;
-  --color-raised: #171b25;
-
-  /* Hairlines */
-  --color-line: #1b1f29;
-  --color-line-strong: #262c3a;
-
-  /* Text */
-  --color-ink: #edeff5;
-  --color-ink-muted: #98a0b5;
-  --color-ink-faint: #5f6779;
-
-  /* Brand + status */
-  --color-accent: #7c5cff;
-  --color-accent-hi: #9b82ff;
-  --color-cyan: #22d3ee;
-  --color-mint: #34d399;
-  --color-amber: #fbbf24;
-  --color-rose: #fb7185;
+  --color-canvas: var(--app-canvas);
+  --color-surface: var(--app-surface);
+  --color-elevated: var(--app-elevated);
+  --color-raised: var(--app-raised);
+  --color-line: var(--app-line);
+  --color-line-strong: var(--app-line-strong);
+  --color-ink: var(--app-ink);
+  --color-ink-muted: var(--app-ink-muted);
+  --color-ink-faint: var(--app-ink-faint);
+  --color-accent: var(--app-accent);
+  --color-accent-hi: var(--app-accent-hi);
+  --color-cyan: var(--app-cyan);
+  --color-mint: var(--app-mint);
+  --color-amber: var(--app-amber);
+  --color-rose: var(--app-rose);
 
   --radius-card: 14px;
 
   --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-fade: fade 0.3s ease both;
+  --animate-fade: fade 0.2s ease both;
+  --animate-palette: palette 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes rise {
@@ -59,12 +120,25 @@
   }
 }
 
-/* ------------------------------------------------------------------ *
+@keyframes palette {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ================================================================== *
  * Base
- * ------------------------------------------------------------------ */
+ * ================================================================== */
 @layer base {
-  * {
-    border-color: var(--color-line);
+  *,
+  *::before,
+  *::after {
+    border-color: var(--app-line);
   }
 
   html,
@@ -75,15 +149,24 @@
 
   body {
     margin: 0;
-    background: var(--color-canvas);
-    color: var(--color-ink);
+    background: var(--app-canvas);
+    color: var(--app-ink);
     font-family: var(--font-sans);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    overflow: hidden; /* desktop app: never scroll the root frame */
+    overflow: hidden; /* a desktop frame never scrolls */
     user-select: none;
     cursor: default;
+  }
+
+  /* Theme crossfade — 180ms, and only when the user actually switches. */
+  body,
+  .themed {
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      border-color 0.18s ease;
   }
 
   button,
@@ -97,16 +180,22 @@
     user-select: text;
   }
 
+  :focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+  }
+
   /* Tabular figures everywhere numbers change. */
   .tnum {
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* ------------------------------------------------------------------ *
- * Window chrome helpers
- * ------------------------------------------------------------------ */
+/* ================================================================== *
+ * Utilities
+ * ================================================================== */
 @layer utilities {
+  /* Electron window chrome */
   .drag {
     -webkit-app-region: drag;
   }
@@ -116,20 +205,20 @@
 
   .scroll-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--app-line-strong) transparent;
   }
   .scroll-thin::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   .scroll-thin::-webkit-scrollbar-thumb {
-    background: var(--color-line-strong);
+    background: var(--app-line-strong);
     border-radius: 99px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
   .scroll-thin::-webkit-scrollbar-thumb:hover {
-    background: #3a4152;
+    background: var(--app-ink-faint);
     background-clip: content-box;
   }
   .scroll-thin::-webkit-scrollbar-corner {
@@ -137,18 +226,38 @@
   }
 
   .text-gradient {
-    background: linear-gradient(100deg, var(--color-ink) 20%, var(--color-accent-hi) 100%);
+    background: linear-gradient(100deg, var(--app-ink) 20%, var(--app-accent-hi) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
-  /* Subtle top-light used on cards to fake a physical bevel. */
   .bevel {
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.04),
-      0 1px 2px 0 rgb(0 0 0 / 0.4),
-      0 12px 32px -18px rgb(0 0 0 / 0.9);
+    box-shadow: var(--app-bevel);
+  }
+
+  /* Ambient depth behind the content pane. */
+  .aurora::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 24rem at 78% -8%, var(--app-aurora-a), transparent 62%),
+      radial-gradient(48rem 20rem at 8% 4%, var(--app-aurora-b), transparent 60%);
+  }
+
+  /* Faint engineering grid — reads as texture, not as a chart. */
+  .grid-veil::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--app-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--app-grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(70% 55% at 50% 0%, #000 0%, transparent 100%);
   }
 }
 

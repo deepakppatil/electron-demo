@@ -6,7 +6,7 @@ function useDesktop() {
   return typeof window !== 'undefined' ? window.desktop : undefined
 }
 
-export default function TitleBar() {
+export default function TitleBar({ onSearch }: { onSearch: () => void }) {
   const desktop = useDesktop()
   const isMac = desktop?.platform === 'darwin'
   const [maximized, setMaximized] = useState(false)
@@ -35,7 +35,7 @@ export default function TitleBar() {
         <div className="flex flex-1 items-center justify-end gap-2">
           <button
             className="no-drag group flex h-7 items-center gap-2 rounded-lg border border-line bg-elevated/60 px-2.5 text-[12px] text-ink-faint transition hover:border-line-strong hover:text-ink-muted"
-            onClick={() => document.getElementById('command-search')?.focus()}
+            onClick={onSearch}
           >
             <Search size={13} />
             <span>Search</span>
@@ -67,7 +67,7 @@ export default function TitleBar() {
       <div className="flex shrink-0 items-center">
         <button
           className="no-drag mr-2 flex h-7 items-center gap-2 rounded-lg border border-line bg-elevated/60 px-2.5 text-[12px] text-ink-faint transition hover:border-line-strong hover:text-ink-muted"
-          onClick={() => document.getElementById('command-search')?.focus()}
+          onClick={onSearch}
         >
           <Search size={13} />
           <span>Search</span>

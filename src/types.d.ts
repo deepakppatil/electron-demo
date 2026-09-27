@@ -4,6 +4,7 @@ declare global {
   interface Window {
     desktop?: {
       platform: 'darwin' | 'win32' | 'linux' | string
+      setTheme(theme: 'dark' | 'light'): void
       window: {
         minimize(): void
         toggleMaximize(): void

@@ -96,3 +96,7 @@ ipcMain.on('win:toggle-maximize', () => {
 })
 ipcMain.on('win:close', () => mainWindow?.close())
 ipcMain.handle('win:is-maximized', () => mainWindow?.isMaximized() ?? false)
+ipcMain.on('theme:set', (_e, theme: 'dark' | 'light') => {
+  nativeTheme.themeSource = theme
+  mainWindow?.setBackgroundColor(theme === 'light' ? '#f3f5f9' : '#08090d')
+})

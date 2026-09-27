@@ -6,6 +6,9 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('desktop', {
   platform: process.platform,
 
+  /** Keeps the OS title bar / window controls in step with the app theme. */
+  setTheme: (theme: 'dark' | 'light') => ipcRenderer.send('theme:set', theme),
+
   window: {
     minimize: () => ipcRenderer.send('win:minimize'),
     toggleMaximize: () => ipcRenderer.send('win:toggle-maximize'),
