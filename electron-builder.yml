@@ -1,0 +1,61 @@
+appId: com.prototype.atlas
+productName: Atlas
+copyright: Copyright © 2026
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+asar: true
+compression: maximum
+
+# electron-builder converts build/icon.png (>=512px) into .icns / .ico for you.
+icon: build/icon.png
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  darkModeSupport: true
+  # Unsigned local prototype: skip identity checks so it builds anywhere.
+  identity: null
+  extendInfo:
+    NSHumanReadableCopyright: Copyright © 2026
+
+dmg:
+  title: ${productName} ${version}
+  contents:
+    - x: 140
+      y: 200
+      type: file
+    - x: 400
+      y: 200
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Atlas
+
+linux:
+  target: [AppImage]
+  category: Utility
